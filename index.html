@@ -2,13 +2,40 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>City Escape: 新宿タイムシンク Prototype</title>
     <!-- Tailwind CSS for authentic UI styling -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- Lucide Icons for terminal styling -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
+        /* Forceful Mobile Viewport & Zoom Stabilization Override */
+    html, body {
+        width: 100%;
+        height: 100dvh;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        touch-action: pan-x pan-y;
+        -webkit-text-size-adjust: 100%;
+    }
+
+    /* Force input elements to maintain a strict 16px font-size profile to completely bypass mobile OS micro-zooms */
+    input[type="text"], 
+    input[type="search"], 
+    input, 
+    textarea, 
+    select {
+        font-size: 16px !important;
+    }
+
+    /* Keep all nested container viewports bound to the dynamic height window */
+    #scene-manager, 
+    #scene-chat, 
+    #game-hud {
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+    }
         @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
         .scanlines::after {
             content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
