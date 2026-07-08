@@ -53,15 +53,54 @@
                 linear-gradient(to bottom, rgba(71, 85, 105, 0.4) 1px, transparent 1px);
             background-size: 24px 24px;
         }
-        /* Fix mobile keyboard auto-zoom behavior */
-    @media screen and (max-width: 768px) {
-        #game-hud input, 
-        #game-hud textarea,
-        #game-hud select {
-            font-size: 16px !important;
+/* BASE GLOBAL STYLES */
+    html, body {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        background-color: #0b0f19;
+    }
+    /* Force desktop view to display cleanly without squeezing flex elements */
+    @media screen and (min-width: 769px) {
+        html, body {
+            height: auto !important;
+            min-height: 100vh !important;
+            overflow-y: auto !important;
+            display: block !important; /* Turn off parent flexbox constraints */
+        }
+        
+        #splash-screen, #briefing-screen {
+            margin: 40px auto !important; /* Centers left/right, adds healthy top/bottom gaps */
+            min-height: auto !important;
+            height: auto !important;
         }
     }
-    </style>
+    /* MOBILE INTERFACE STABILIZATION: Activates ONLY on phone screens */
+    @media screen and (max-width: 768px) {
+        html, body {
+            height: 100dvh !important;
+            overflow: hidden !important;
+            touch-action: pan-x pan-y;
+            -webkit-text-size-adjust: 100%;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        /* Prevent mobile keyboard auto-zoom behavior */
+        input[type="text"], input, textarea, select {
+            font-size: 16px !important;
+        }
+        /* Keep the main hacking terminal bounded strictly to the mobile window */
+        #game-hud {
+            height: 100dvh !important;
+            max-height: 100dvh !important;
+        }
+        #splash-screen, #briefing-screen {
+            height: 100dvh !important;
+            width: 100% !important;
+        }
+    }
+</style>
 <script data-goatcounter="https://ggraven.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </head>
 <body class="bg-[#0b0f19] text-slate-100 min-h-screen flex flex-col justify-center items-center font-mono relative selection:bg-[#22d3ee] selection:text-[#070b19]">
