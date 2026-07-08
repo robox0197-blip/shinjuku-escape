@@ -96,8 +96,11 @@
             max-height: 100dvh !important;
         }
         #splash-screen, #briefing-screen {
-            height: 100dvh !important;
+            min-height: 100dvh !important; /* Changed from height to min-height */
+            height: auto !important;        /* Let it grow cleanly if text is long */
             width: 100% !important;
+            padding-top: 20px !important;    /* Gives your title breathing room */
+            padding-bottom: 20px !important; /* Keeps the button safe from the screen edge */
         }
     }
 </style>
