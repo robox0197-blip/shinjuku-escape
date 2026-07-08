@@ -294,9 +294,10 @@
     <!-- ========================================================================= -->
     <!-- Added "hidden" layout guard directly inside style configuration tag below -->
     <div id="scene-manager" class="w-full h-full relative">
-    <div id="scene-chat" class="flex flex-col h-full">
+    <div id="scene-chat" class="w-full h-full flex flex-col flex-1">    
 
-    <div id="game-hud" style="display: none;" class="flex-1 flex flex-col justify-between max-w-md mx-auto w-full h-screen bg-[#0d111c] border-x border-slate-900 shadow-2xl">
+    <!-- Replace your main layout container wrapper with this setup -->
+<div id="game-hud" style="display: none;" class="flex flex-col justify-between max-w-md mx-auto w-full h-[100dvh] bg-[#0d111c] border-x border-slate-900 overflow-hidden">
         
         <!-- Header Controls Panel -->
         <div class="p-3 border-b border-slate-900 bg-[#111522] flex justify-between items-center shadow-md relative">
