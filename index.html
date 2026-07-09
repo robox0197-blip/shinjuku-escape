@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>City Escape: 新宿タイムシンク Prototype</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>        
+        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+        .scanlines::after {
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 24, 38, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            z-index: 10; background-size: 100% 4px; pointer-events: none;
+        }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #3f4e6b; border-radius: 2px; }
+        
+        /* High-Contrast Exchanged Slate Vector Grid Map Background */
+        .exchanged-map-grid {
+            background-color: #1e293b; /* Dark slate base instead of pure black for clarity */
+            background-image: 
+                linear-gradient(to right, rgba(71, 85, 105, 0.4) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(71, 85, 105, 0.4) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+    </style>
+    <script data-goatcounter="https://ggraven.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</head>
+<body class="bg-[#0b0f19] text-slate-100 min-h-screen font-mono relative selection:bg-[#22d3ee] selection:text-[#070b19]">
+    <div id="splash-screen" class="w-full min-h-screen flex flex-col justify-center items-center p-6 max-w-md mx-auto bg-[#0d111c] border-x border-slate-900 shadow-2xl z-50 text-center space-y-8">
+        <div class="space-y-6">
+            <div class="text-[9px] tracking-widest text-red-500 font-bold border border-red-950/60 bg-red-950/20 px-3 py-1 rounded-full w-fit mx-auto font-sans">
+                &gt;_ REAL ESCAPE X DOOH PROJECT
+            </div>
+            
+            <div class="space-y-2">
+                <h1 class="text-white text-3xl font-black tracking-wider drop-shadow-md">新宿タイムシンク</h1>
+                <h2 class="text-red-600 text-2xl font-black tracking-widest drop-shadow-[0_0_8px_rgba(220,38,38,0.3)]">未来からのSOS</h2>
+            </div>
+
+            <p class="text-[11px] text-slate-400 font-sans leading-relaxed max-w-[280px] mx-auto text-center pt-2">
+                デジタルサイネージは、現代と荒廃した未来を繋ぐ唯一の窓。新宿の街を歩き、隠された世界の真実を暴け。
+            </p>
+        </div>
+
+        <div class="w-full max-w-xs pt-10 px-4">
+            <button onclick="goToBriefing()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl font-sans flex items-center justify-center space-x-2 cursor-pointer transition-all active:scale-[0.98] shadow-lg text-xs tracking-wider">
+                <span>捜査を開始する</span>
+                <i data-lucide="play" class="w-3 h-3 fill-white text-white"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="cover-screen" style="display: none;" class="flex flex-col justify-between p-6 max-w-md mx-auto w-full min-h-screen bg-[#0d111c] border-x border-slate-900 shadow-2xl z-40 text-center">
+        <div class="my-auto space-y-8 font-sans selection:bg-red-700 selection:text-white">
+            <div class="flex items-center space-x-2 text-red-500 font-mono text-[11px] tracking-widest uppercase border border-red-950 bg-red-950/20 px-3 py-1.5 rounded-lg w-fit mx-auto">
+                <i data-lucide="alert-triangle" class="w-3.5 h-3.5 animate-pulse"></i>
+                <span>依頼主「A」からの通信</span>
+            </div>
+            
+            <div class="space-y-4">
+                <h2 class="text-red-500 font-bold tracking-wider text-sm text-center">【ミッション概要】</h2>
+                <p class="text-xs text-slate-300 leading-relaxed font-sans text-justify bg-[#121724] border border-slate-800/80 p-5 rounded-xl shadow-inner">
+                    未来の新宿はゾンビハザードにより荒廃してしまった。事故の影響で、未来の技術では研究所のメインフレームにアクセスできない。<br><br>
+                    そこで、まだ研究所が建設される前の時代にいる君たちにデータを集めてほしい。先行して潜入していた調査部隊が消息を絶った。彼らが遺した手がかりを街のサイネージから読み解くんだ。
+                </p>
+            </div>
+        </div>
+
+        <div class="w-full max-w-xs mx-auto pb-8">
+            <button onclick="startInvestigation()" class="w-full bg-slate-100 hover:bg-white text-slate-950 font-bold py-4 rounded-xl font-sans flex items-center justify-center space-x-2 cursor-pointer shadow-md">
+                <span>作戦エリアへ侵入</span><i data-lucide="target" class="w-4 h-4 text-slate-950"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="side-menu" class="fixed top-0 left-0 h-full w-80 bg-[#111625] border-r border-slate-800 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col p-6 justify-between shadow-2xl">
+        <div class="space-y-6">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                <span class="text-xs tracking-widest text-red-500 font-bold flex items-center gap-2">
+                    <i data-lucide="sliders" class="w-4 h-4"></i> SYSTEM MENU
+                </span>
+                <button onclick="toggleMenu()" class="text-slate-500 hover:text-slate-300 cursor-pointer"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            
+            <nav class="space-y-3">
+                <button onclick="openModal('modal-settings')" class="w-full text-left py-3.5 px-4 rounded-xl bg-[#1a2035] border border-slate-800/80 hover:border-slate-700 flex items-center justify-between transition-all text-xs font-bold text-slate-300 cursor-pointer">
+                    <span class="flex items-center gap-3"><i data-lucide="settings" class="w-4 h-4 text-slate-400"></i> Settings</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>
+                </button>
+
+                <button onclick="openModal('modal-about')" class="w-full text-left py-3.5 px-4 rounded-xl bg-[#1a2035] border border-slate-800/80 hover:border-slate-700 flex items-center justify-between transition-all text-xs font-bold text-slate-300 cursor-pointer">
+                    <span class="flex items-center gap-3"><i data-lucide="info" class="w-4 h-4 text-slate-400"></i> About Project</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>
+                </button>
+
+                <button onclick="openModal('modal-stages')" class="w-full text-left py-3.5 px-4 rounded-xl bg-[#1a2035] border border-slate-800/80 hover:border-slate-700 flex items-center justify-between transition-all text-xs font-bold text-slate-300 relative cursor-pointer">
+                    <span class="flex items-center gap-3"><i data-lucide="milestone" class="w-4 h-4 text-red-400"></i> Story Stages</span>
+                    <span id="menu-stage-dot" style="display: none;" class="absolute right-10 top-4.5 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>
+                </button>
+
+                <button onclick="openModal('modal-characters')" class="w-full text-left py-3.5 px-4 rounded-xl bg-[#1a2035] border border-slate-800/80 hover:border-slate-700 flex items-center justify-between transition-all text-xs font-bold text-slate-300 cursor-pointer">
+                    <span class="flex items-center gap-3"><i data-lucide="users" class="w-4 h-4 text-slate-400"></i> Character Database</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>
+                </button>
+
+                <button onclick="openModal('modal-access')" class="w-full text-left py-3.5 px-4 rounded-xl bg-[#1a2035] border border-slate-800/80 hover:border-slate-700 flex items-center justify-between transition-all text-xs font-bold text-slate-300 cursor-pointer">
+                    <span class="flex items-center gap-3"><i data-lucide="radio" class="w-4 h-4 text-slate-400"></i> DOOH Access Info</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>
+                </button>
+
+                <button onclick="openModal('modal-rankings')" class="w-full text-left py-3.5 px-4 rounded-xl bg-[#1a2035] border border-slate-800/80 hover:border-slate-700 flex items-center justify-between transition-all text-xs font-bold text-slate-300 cursor-pointer">
+                    <span class="flex items-center gap-3"><i data-lucide="trophy" class="w-4 h-4 text-amber-500"></i> Global Leaderboard</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>
+                </button>
+
+                <button onclick="showScene('chat'); toggleMenu();" class="w-full text-left py-3.5 px-4 rounded-xl bg-[#1a2035] border border-slate-800/80 hover:border-slate-700 flex items-center justify-between text-slate-300 hover:text-white transition-all duration-150">
+                    <span class="flex items-center gap-3 text-slate-300 hover:text-white">
+                        <i data-lucide="message-square" class="w-4 h-4 text-slate-400"></i>
+                        <span class="text-xs font-medium font-sans text-slate-300 group-hover:text-white">Global Chat Feed</span>
+                    </span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>
+                </button>
+            </nav>
+        </div>
+        <div class="text-[10px] tracking-widest text-slate-600 text-center border-t border-slate-900 pt-4">
+            OPERATIONAL HUB V1.2.0
+        </div>
+    </div>
+
+    <div id="modal-settings" style="display:none;" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-[#121624] border border-slate-800 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+            <h3 class="font-bold border-b border-slate-800 pb-2 text-xs tracking-wider text-slate-200">SYSTEM SETTINGS</h3>
+            <div class="space-y-3 text-xs text-slate-400 font-sans">
+                <div class="flex justify-between items-center py-1"><span>端末効果音 (SFX)</span><span class="text-red-500 font-bold font-mono">READY</span></div>
+                <div class="flex justify-between items-center py-1"><span>通信暗号化モード</span><span class="text-slate-500 font-mono">AES-256</span></div>
+            </div>
+            <button onclick="closeModal('modal-settings')" class="w-full py-3 bg-[#1d243a] hover:bg-[#252e4a] text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer">閉じる</button>
+        </div>
+    </div>
+
+    <div id="modal-about" style="display:none;" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-[#121624] border border-slate-800 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+            <h3 class="font-bold border-b border-slate-800 pb-2 text-xs tracking-wider text-slate-200">ABOUT PROJECT</h3>
+            <p class="text-xs text-slate-400 font-sans leading-relaxed">
+                本アプリは「大型屋外デジタルサイネージ（DOOH）とスマートフォンを連動させた次世代都市回遊型リアル脱出ゲーム」の技術プロトタイプです。
+            </p>
+            <button onclick="closeModal('modal-about')" class="w-full py-3 bg-[#1d243a] hover:bg-[#252e4a] text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer">閉じる</button>
+        </div>
+    </div>
+
+    <div id="modal-stages" style="display:none;" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-[#121624] border border-slate-800 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+            <h3 class="font-bold border-b border-slate-800 pb-2 text-xs tracking-wider text-slate-200">STORY OVERVIEW</h3>
+            <div class="grid grid-cols-2 gap-3 text-center text-[10px]">
+                <div id="grid-stage-1" class="border border-red-900/60 bg-red-950/20 p-4 rounded-xl text-slate-200 flex flex-col items-center justify-center gap-1 min-h-[64px]">
+                    <i data-lucide="lock-open" class="w-3.5 h-3.5 text-red-500"></i><span class="font-bold tracking-wide">Stage 1: SOS</span>
+                </div>
+                <div id="grid-stage-2" class="border border-slate-900 bg-slate-950/40 p-4 rounded-xl text-slate-600 flex flex-col items-center justify-center gap-1 min-h-[64px]">
+                    <i data-lucide="lock" class="w-3.5 h-3.5"></i><span>Stage 2: FIND</span>
+                </div>
+                <div id="grid-stage-3" class="border border-slate-900 bg-slate-950/40 p-4 rounded-xl text-slate-600 flex flex-col items-center justify-center gap-1 min-h-[64px]">
+                    <i data-lucide="lock" class="w-3.5 h-3.5"></i><span>Stage 3: LOG</span>
+                </div>
+                <div id="grid-stage-4" class="border border-slate-900 bg-slate-950/40 p-4 rounded-xl text-slate-600 flex flex-col items-center justify-center gap-1 min-h-[64px]">
+                    <i data-lucide="lock" class="w-3.5 h-3.5"></i><span>Stage 4: TRUTH</span>
+                </div>
+                <div id="grid-stage-5" class="border border-slate-900 bg-slate-950/40 p-4 rounded-xl text-slate-600 flex flex-col items-center justify-center gap-1 min-h-[64px]">
+                    <i data-lucide="lock" class="w-3.5 h-3.5"></i><span>Stage 5: ESCAPE</span>
+                </div>
+                <div id="grid-stage-6" class="border border-slate-900 bg-slate-950/40 p-4 rounded-xl text-slate-600 flex flex-col items-center justify-center gap-1 min-h-[64px]">
+                    <i data-lucide="lock" class="w-3.5 h-3.5"></i><span>Stage 6: FUTURE</span>
+                </div>
+            </div>
+            <button onclick="closeModal('modal-stages')" class="w-full py-3 bg-[#1d243a] hover:bg-[#252e4a] text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer">閉じる</button>
+        </div>
+    </div>
+
+    <div id="modal-characters" style="display:none;" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-[#121624] border border-slate-800 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+            <h3 class="font-bold border-b border-slate-800 pb-2 text-xs tracking-wider text-slate-200">CHARACTER DATABASE</h3>
+            <div class="space-y-3 text-xs font-sans">
+                <div class="p-3 bg-[#171d30] border border-slate-800/60 rounded-xl">
+                    <p class="text-red-400 font-bold mb-1">依頼主「A」</p>
+                    <p class="text-slate-400 text-[11px] leading-relaxed">未来から通信を送り、君たちに作戦を指示する謎の人物。パンデミックの救世主を自称しているが…?</p>
+                </div>
+                <div class="p-3 bg-[#171d30] border border-slate-800/60 rounded-xl">
+                    <p class="text-amber-400 font-bold mb-1">研究員「B」</p>
+                    <p class="text-slate-400 text-[11px] leading-relaxed">新宿地下隔離施設でワクチンのコアデータを防衛していた重要人物。事故発生時に内部からロックをかけた。</p>
+                </div>
+            </div>
+            <button onclick="closeModal('modal-characters')" class="w-full py-3 bg-[#1d243a] hover:bg-[#252e4a] text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer">閉じる</button>
+        </div>
+    </div>
+
+    <div id="modal-access" style="display:none;" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-[#121624] border border-slate-800 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+            <h3 class="font-bold border-b border-slate-800 pb-2 text-xs tracking-wider text-slate-200">DOOH TARGET AREA</h3>
+            <div class="space-y-2">
+                <p class="text-xs text-slate-400 font-bold">【現在のターゲットDOOH】</p>
+                <div class="p-3 bg-[#171d30] border border-slate-800 rounded-xl text-xs text-slate-300 font-sans space-y-1">
+                    <p>LOCATION: <span class="text-slate-100 font-mono">新宿駅東口エリア</span></p>
+                    <p>TARGET: <span class="text-slate-100">3D猫の大型サイネージ</span></p>
+                </div>
+            </div>
+            <button onclick="closeModal('modal-access')" class="w-full py-3 bg-[#1d243a] hover:bg-[#252e4a] text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer">閉じる</button>
+        </div>
+    </div>
+
+    <div id="modal-rankings" style="display:none;" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-[#121624] border border-slate-800 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+            <h3 class="font-bold border-b border-slate-800 pb-2 text-xs tracking-wider text-slate-200">GLOBAL LEADERBOARD</h3>
+            
+            <div class="p-3.5 bg-gradient-to-br from-red-950/40 to-[#192136] border border-red-900/40 rounded-xl space-y-1.5 shadow-md">
+                <span class="text-[9px] tracking-widest text-red-400 font-bold block uppercase">YOUR CHRONO METRICS:</span>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-white flex items-center gap-1.5"><i data-lucide="user-check" class="w-3.5 h-3.5 text-red-500"></i> YOU (AGENT)</span>
+                    <span id="player-live-rank" class="text-xs font-black text-red-400 bg-red-950/80 border border-red-900/60 px-2 py-0.5 rounded">RANK #42</span>
+                </div>
+                <div class="flex justify-between items-center text-[10px] text-slate-400 pt-1 border-t border-slate-800/60">
+                    <span>ELAPSED TIME:</span>
+                    <span id="player-live-time" class="font-mono font-bold text-slate-200">00:00.00</span>
+                </div>
+            </div>
+
+            <div class="space-y-2 font-mono text-xs pt-1">
+                <div class="flex justify-between items-center p-2.5 bg-[#171d30] border border-slate-800 rounded-xl">
+                    <span class="text-amber-400 font-bold">#01 TEAM_ALPHA</span><span class="text-slate-300">14分22秒</span>
+                </div>
+                <div class="flex justify-between items-center p-2.5 bg-[#171d30] border border-slate-800 rounded-xl">
+                    <span class="text-slate-400 font-bold">#02 CYBER_X</span><span class="text-slate-300">16分05秒</span>
+                </div>
+            </div>
+            <button onclick="closeModal('modal-rankings')" class="w-full py-3 bg-[#1d243a] hover:bg-[#252e4a] text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer">閉じる</button>
+        </div>
+    </div>
+
+    <div id="modal-chat" style="display:none;" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-[#121624] border border-slate-800 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl flex flex-col max-h-[80vh]">
+            <h3 class="font-bold border-b border-slate-800 pb-2 text-xs tracking-wider text-slate-200">GLOBAL OPERATIONAL CHAT</h3>
+            <div class="flex-1 overflow-y-auto space-y-3 pr-1 custom-scroll text-[11px] font-sans">
+                <div class="bg-[#171d30] p-2.5 rounded-xl border border-slate-800">
+                    <span class="text-red-400 font-mono block font-bold mb-0.5">Agent_Shinjuku</span>
+                    <span class="text-slate-300">アルタ前ビジョンの同期成功！難易度高めだけどめっちゃ面白い。</span>
+                </div>
+            </div>
+            <button onclick="closeModal('modal-chat')" class="w-full py-3 mt-2 bg-[#1d243a] hover:bg-[#252e4a] text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer">閉じる</button>
+        </div>
+    </div>
+
+    <div id="scene-manager" class="w-full h-full relative">
+        <div id="scene-chat" class="w-full h-full flex flex-col flex-1">    
+
+            <div id="game-hud" style="display: none;" class="flex flex-col justify-between max-w-md mx-auto w-full h-[100dvh] bg-[#0d111c] border-x border-slate-900 overflow-hidden shadow-2xl">
+                
+                <div class="p-3 border-b border-slate-900 bg-[#111522] flex justify-between items-center shadow-md relative">
+                    <div class="flex items-center space-x-3">
+                        <button onclick="toggleMenu()" class="p-2 rounded-lg bg-[#192033] text-slate-300 border border-slate-800 hover:text-white cursor-pointer relative transition-all active:scale-95">
+                            <i data-lucide="menu" class="w-4 h-4"></i>
+                            <span id="hud-menu-alert-dot" style="display: none;" class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[#111522]"></span>
+                        </button>
+                        <div class="flex items-center space-x-2 font-mono">
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                            <span class="text-[10px] text-slate-400 tracking-wider">LINK STABLE</span>
+                        </div>
+                    </div>
+                    <div id="stage-indicator" class="text-[10px] font-mono tracking-widest font-bold px-2 py-1 bg-red-950/40 border border-red-900/60 text-red-400 rounded-lg">PHASE 01/06</div>
+                </div>
+
+                <div class="p-3 bg-[#0d111c] sticky top-0 z-10 shadow-md">
+                    <div id="billboard-box" class="w-full p-4 bg-[#080b12] border border-slate-900 rounded-xl relative overflow-hidden scanlines shadow-inner">
+                        <div class="flex justify-between items-center text-[8px] text-slate-500 font-mono mb-2 border-b border-slate-900 pb-1.5">
+                            <span id="billboard-loc-tag" class="flex items-center gap-1 text-red-500 font-bold"><i data-lucide="map-pin" class="w-2.5 h-2.5"></i>新宿駅東口スクエア</span>
+                            <span>DOOH TELEMETRY LOG</span>
+                        </div>
+                        <div id="billboard-content" class="text-xs font-sans text-center py-2 text-slate-300">
+                            <p class="text-red-500 font-bold text-[11px] mb-1">【デジタル異常ノイズを感知】</p>
+                            <p class="text-xl font-mono font-black tracking-widest text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.2)]">S . O . S</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="chat-stream" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll bg-[#0a0d16] shadow-inner">
+                    <div class="flex items-start gap-2.5 max-w-[85%]">
+                        <div class="w-7 h-7 rounded-full bg-red-950/60 border border-red-900/40 flex items-center justify-center text-[10px] text-red-400 font-bold shrink-0">A</div>
+                        <div class="space-y-1">
+                            <div class="bg-[#121726] border border-slate-800 p-3 rounded-2xl rounded-tl-none text-xs text-slate-300 leading-relaxed font-sans shadow-sm">
+                                通信が同期されたな！私は未来の新宿地区に潜伏している「A」だ。街街頭サイネージ（DOOH）に暗号パケットを割り込ませた。表示されている符号を読み取り、送信してくれ。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-[#0d111c] border-t border-slate-900">
+                    <div class="exchanged-map-grid relative w-full h-24 border border-slate-900 rounded-xl overflow-hidden flex items-center justify-center shadow-inner">
+                        <div class="absolute w-full h-[2px] bg-slate-800/80 top-1/3 left-0"></div>
+                        <div class="absolute w-full h-[2px] bg-slate-800/80 top-2/3 left-0"></div>
+                        <div class="absolute w-[2px] h-full bg-slate-800/80 left-1/3 top-0"></div>
+                        <div class="absolute w-[2px] h-full bg-slate-800/80 left-2/3 top-0"></div>
+                        <div id="map-track-line" class="absolute w-[4px] h-[40px] bg-gradient-to-b from-red-500 to-amber-500 left-1/3 top-1/3 shadow-lg"></div>
+                        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-20">
+                            <div class="w-3.5 h-3.5 bg-red-500 rounded-full mx-auto flex items-center justify-center shadow-lg border-2 border-white">
+                                <div class="w-1 h-1 bg-white rounded-full"></div>
+                            </div>
+                            <span id="map-location-text" class="text-[9px] font-sans text-slate-200 block mt-1 uppercase font-bold bg-[#111625] border border-slate-800 px-2 py-0.5 rounded shadow-xl">新宿駅東口スクエア</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="input-tray" class="p-3 border-t border-slate-900 bg-[#111522] space-y-2 shadow-lg">
+                    <div class="relative flex gap-2">
+                        <input type="text" id="answer-field" placeholder="認証符号コードを入力..." class="flex-1 px-4 py-3 bg-[#080b12] border border-slate-800 focus:border-red-500 rounded-xl text-xs uppercase tracking-widest focus:outline-none text-center text-white placeholder-slate-600 font-mono shadow-inner">
+                        <button onclick="handleChatSubmit()" class="px-5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs tracking-wider cursor-pointer transition-colors shadow-md border border-red-500/20">送信</button>
+                    </div>
+                    <p id="hud-feedback" class="text-center text-[10px] text-red-500 min-h-3 font-sans font-bold"></p>
+                </div>
+            </div>
+
+        </div> 
+        
+        <div id="scene-ending" class="hidden flex flex-col min-h-screen items-center justify-center p-8 text-center space-y-6 max-w-md mx-auto w-full bg-[#0d111c] border-x border-slate-900 shadow-2xl">
+            <h1 id="ending-title" class="text-4xl font-black text-white tracking-widest animate-pulse">MISSION COMPLETE</h1>
+            <p id="ending-msg" class="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">時空の歪みは正常化されました。プロトタイプ検証へのご協力ありがとうございます。</p>
+            
+            <div class="flex space-x-3 pt-6 w-full max-w-xs mx-auto">
+                <button onclick="showScene('chat')" class="flex-1 bg-slate-800 text-slate-200 text-xs font-bold py-3 rounded-xl hover:bg-slate-700 cursor-pointer transition-all shadow-md">
+                    チャットへ戻る
+                </button>
+                <button onclick="openModal('modal-rankings')" class="flex-1 bg-red-600 text-white text-xs font-bold py-3 rounded-xl hover:bg-red-700 cursor-pointer transition-all shadow-lg">
+                    ランキング確認
+                </button>
+            </div>
+        </div>
+
+    </div> 
+
+    <script>
+        lucide.createIcons();
+
+        let currentStage = 1;
+        let startTime = null;
+        let timerInterval = null;
+
+        function toggleMenu() {
+            document.getElementById('side-menu').classList.toggle('-translate-x-full');
+            document.getElementById('hud-menu-alert-dot').style.display = 'none';
+        }
+        
+        function openModal(id) {
+            document.getElementById(id).style.display = 'flex';
+            lucide.createIcons();
+            if (id === 'modal-stages') {
+                document.getElementById('menu-stage-dot').style.display = 'none';
+            }
+            
+            const sideMenu = document.getElementById('side-menu');
+            if (sideMenu && !sideMenu.classList.contains('-translate-x-full')) {
+                toggleMenu();
+            }
+        }
+        
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function goToBriefing() {
+            document.getElementById('splash-screen').style.display = 'none';
+            document.getElementById('cover-screen').style.display = 'flex'; 
+            if(window.lucide) { lucide.createIcons(); }
+        }
+
+        // Timer engine fires dynamically upon entering operations arena
+        function startInvestigation() {
+            document.getElementById('cover-screen').style.display = 'none';
+            document.getElementById('game-hud').style.display = 'flex';
+            
+            startTime = Date.now();
+            timerInterval = setInterval(updateLiveTimer, 10);
+            
+            lucide.createIcons();
+        }
+
+        function updateLiveTimer() {
+            if (!startTime) return;
+            let elapsed = Date.now() - startTime;
+            let minutes = Math.floor(elapsed / 60000);
+            let seconds = Math.floor((elapsed % 60000) / 1000);
+            let ms = Math.floor((elapsed % 1000) / 10);
+            
+            let displayStr = 
+                (minutes < 10 ? "0" : "") + minutes + ":" + 
+                (seconds < 10 ? "0" : "") + seconds + "." + 
+                (ms < 10 ? "0" : "") + ms;
+                
+            document.getElementById('player-live-time').innerText = displayStr;
+        }
+
+        function unlockStageInGrid(num, label) {
+            const grid = document.getElementById(`grid-stage-${num}`);
+            if (grid) {
+                grid.className = "border border-red-900/60 bg-red-950/20 p-4 rounded-xl text-slate-200 flex flex-col items-center justify-center gap-1 min-h-[64px]";
+                grid.innerHTML = `<i data-lucide="lock-open" class="w-3.5 h-3.5 text-red-500"></i><span class="font-bold tracking-wide">Stage ${num}: ${label}</span>`;
+            }
+        }
+
+        function triggerNotificationAlerts() {
+            document.getElementById('hud-menu-alert-dot').style.display = 'block';
+            document.getElementById('menu-stage-dot').style.display = 'block';
+        }
+
+        function printChat(sender, text, isPlayer = false) {
+            const container = document.getElementById('chat-stream');
+            const row = document.createElement('div');
+            
+            if (isPlayer) {
+                row.className = "flex items-start gap-2.5 max-w-[85%] ml-auto justify-end";
+                row.innerHTML = `
+                    <div class="space-y-1 text-right">
+                        <div class="bg-red-600 border border-red-500 p-2.5 rounded-2xl rounded-tl-none text-xs text-white text-left font-sans shadow-md">${text}</div>
+                    </div>
+                `;
+            } else {
+                row.className = "flex items-start gap-2.5 max-w-[85%]";
+                row.innerHTML = `
+                    <div class="w-7 h-7 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0 font-mono">${sender}</div>
+                    <div class="space-y-1">
+                        <div class="bg-[#121726] border border-slate-800 p-2.5 rounded-2xl rounded-tl-none text-xs text-slate-300 leading-relaxed font-sans shadow-sm">${text}</div>
+                    </div>
+                `;
+            }
+            container.appendChild(row);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleChatSubmit() {
+            const field = document.getElementById('answer-field');
+            const feedback = document.getElementById('hud-feedback');
+            const val = field.value.trim().toUpperCase();
+
+            if (!val) return;
+
+            // ==========================================
+            // STAGE 1 -> STAGE 2
+            // ==========================================
+            if (currentStage === 1 && val === "SOS") {
+                printChat("YOU", "解析コード「SOS」を送信。", true);
+                feedback.innerText = ""; field.value = "";
+                
+                setTimeout(() => {
+                    printChat("SYS", "🔔 [NOTIFICATION]: STAGE 1 クリアに成功。ストーリー概要に新しいパケットが同期されました。");
+                    printChat("A", "素晴らしい速度だ。先行調査部隊が残した次の通信ポイントは『新宿地下連絡通路』の大型壁面モニターだ。表示されている暗号パケットコードを解析してくれ。");
+
+                    document.getElementById('stage-indicator').innerText = "PHASE 02/06";
+                    document.getElementById('map-location-text').innerText = "新宿駅地下・通路B";
+                    document.getElementById('billboard-loc-tag').innerHTML = `<i data-lucide="map-pin" class="w-2.5 h-2.5"></i>新宿駅構内・地下通路`;
+                    
+                    document.getElementById('billboard-content').innerHTML = `
+                        <p class="text-amber-500 font-bold text-[11px] mb-1">【地下通路ハックアーカイブ】</p>
+                        <p class="text-sm font-mono font-bold tracking-widest text-amber-400">[ サ ] [ _ ] [ セ ] [ _ ]</p>
+                    `;
+
+                    document.getElementById('player-live-rank').innerText = "RANK #39";
+
+                    unlockStageInGrid(2, "FIND");
+                    triggerNotificationAlerts();
+                    currentStage = 2;
+                    lucide.createIcons();
+                }, 1000);
+            } 
+            // ==========================================
+            // STAGE 2 -> STAGE 3
+            // ==========================================
+            else if (currentStage === 2) {
+                if (val === "サイセイ" || val === "再生" || val === "SAISEI") {
+                    printChat("YOU", `解析コード「${field.value}」を送信。`, true);
+                    feedback.innerText = ""; 
+                    field.value = "";
+
+                    setTimeout(() => {
+                        printChat("SYS", "🔓 [SYSTEM]: Decryption successful. 隔離環境セクターのアクセス権を復旧。");
+                        printChat("A", "見事だ！データが書き換わり、システムが『再生』を始めたぞ。だがコアシステムへ進むには、このエリアの歴史データベースを照合する必要があるようだ。モニターを確認してくれ！");
+
+                        document.getElementById('stage-indicator').innerText = "PHASE 03/06";
+                        document.getElementById('map-location-text').innerText = "新宿御苑周辺";
+                        document.getElementById('billboard-loc-tag').innerHTML = `<i data-lucide="map-pin" class="w-2.5 h-2.5"></i>歴史アーカイブ・データベース`;
+                        
+                        document.getElementById('billboard-content').innerHTML = `
+                            <p class="text-amber-500 font-bold text-[11px] mb-1">【歴史データ復元クイズ】</p>
+                            <p class="text-[12px] text-slate-200 leading-relaxed">かつて広大な庭園であり、未来の緑化再生計画のベースとなった新宿のエリア名は？（ヒント：〇〇〇苑）</p>
+                        `;
+
+                        document.getElementById('player-live-rank').innerText = "RANK #25";
+
+                        if (typeof unlockStageInGrid === "function") unlockStageInGrid(3, "HISTORY");
+                        if (typeof triggerNotificationAlerts === "function") triggerNotificationAlerts();
+                        
+                        currentStage = 3;
+                        if (window.lucide) lucide.createIcons();
+                    }, 1000);
+                } else {
+                    feedback.innerText = "❌ ERROR: 不完全なデータ配列です。文字を正しく補完してください。";
+                }
+            }
+            // ==========================================
+            // STAGE 3 -> STAGE 4
+            // ==========================================
+            else if (currentStage === 3) {
+                if (val === "新宿御苑" || val === "御苑" || val === "SHINJUKU GYOEN" || val === "SHINJUKUGYOEN") {
+                    printChat("YOU", `解析コード「${field.value}」を送信。`, true);
+                    feedback.innerText = ""; 
+                    field.value = "";
+
+                    setTimeout(() => {
+                        printChat("SYS", "🔓 [SYSTEM]: 認証成功。歴史アーカイブ・コアの同期を完了しました。");
+                        printChat("A", "やはり新宿御苑か！かつての広大な緑のデータが、修復プログラムの鍵になっていたんだな。次が核心だ。メインフレームにハッキング回路を繋ぐぞ。文字のグリッドから正しいキーワードを繋ぎ合わせてくれ！");
+
+                        document.getElementById('stage-indicator').innerText = "PHASE 04/06";
+                        document.getElementById('map-location-text').innerText = "メインフレーム通信ノード";
+                        document.getElementById('billboard-loc-tag').innerHTML = `<i data-lucide="link" class="w-2.5 h-2.5"></i>回路接続リンク・セクター`;
+                        
+                        document.getElementById('billboard-content').innerHTML = `
+                            <p class="text-sky-400 font-bold text-[11px] mb-1">【回路接続：ワードリンク・パズル】</p>
+                            <p class="text-[12px] text-slate-200 leading-relaxed font-mono">
+                                [ S ] ── [ E ] <br>
+                                &nbsp;&nbsp;│ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; │ &nbsp;&nbsp;&nbsp;(すべてのノードを通過し、<br>
+                                [ D ] ── [ E ] &nbsp;&nbsp;&nbsp;&nbsp;始まりの緑となる単語を完成させよ)
+                            </p>
+                        `;
+
+                        document.getElementById('player-live-rank').innerText = "RANK #12";
+
+                        unlockStageInGrid(4, "LINK");
+                        triggerNotificationAlerts();
+                        currentStage = 4;
+                        lucide.createIcons();
+                    }, 1000);
+                } else {
+                    feedback.innerText = "❌ CODE ERROR: 該当する歴史データが存在しません。入力内容を確認してください。";
+                }
+            }
+            else if (currentStage === 4) {
+                if (val === "SEED") {
+                    printChat("YOU", `解析コード「${field.value}」を送信。`, true);
+                    feedback.innerText = ""; 
+                    field.value = "";
+
+                    setTimeout(() => {
+                        printChat("SYS", "🔓 [SYSTEM]: Circuit connection established. メインフレーム最深部へのアクセスに成功。");
+                        printChat("A", "ノードが綺麗に繋がったぞ！『SEED』…すべての始まりの種、か。これで残すロックはあと1つだ。ワクチンデータは今、君の手元にある。だが、これを未来へ転送すれば過去の歴史が改変される恐れがある。転送するか、破棄するか、コードを入力せよ。");
+
+                        document.getElementById('stage-indicator').innerText = "PHASE 05/06";
+                        document.getElementById('map-location-text').innerText = "時空ゲートウェイ制御パネル";
+                        document.getElementById('billboard-loc-tag').innerHTML = `<i data-lucide="shield-alert" class="w-2.5 h-2.5"></i>最終意思決定フェーズ`;
+                        
+                        document.getElementById('billboard-content').innerHTML = `
+                            <p class="text-red-500 font-bold text-[11px] mb-1">【最終意思決定フェーズ】</p>
+                            <p class="text-xs text-slate-300">未来を救うか <span class="text-red-400 font-bold">[SAVE]</span>、歴史を守るか <span class="text-sky-400 font-bold">[DESTROY]</span>、コードを入力せよ。</p>
+                        `;
+
+                        document.getElementById('player-live-rank').innerText = "RANK #3";
+
+                        unlockStageInGrid(5, "FINAL CHOICE");
+                        triggerNotificationAlerts();
+                        currentStage = 5; 
+                        lucide.createIcons();
+                    }, 1000);
+                } else {
+                    feedback.innerText = "❌ Circuit Interrupted: ノードが正しく接続されていません。パルス順を確認してください。";
+                }
+            }
+            // ==========================================
+            // STAGE 5 -> STAGE 6 (ゲームクリア / エンディング)
+            // ==========================================
+            else if (currentStage === 5 && (val === "SAVE" || val === "DESTROY")) {
+                printChat("YOU", `決断「${val}」を送信。`, true);
+                feedback.innerText = ""; field.value = "";
+                
+                field.disabled = true;
+                field.placeholder = "MISSION COMPLETE";
+                document.querySelector("button[onclick='handleChatSubmit()']").disabled = true;
+                
+                setTimeout(() => {
+                    if (timerInterval) {
+                        clearInterval(timerInterval);
+                    }
+
+                    document.getElementById('stage-indicator').innerText = "PHASE 06/06";
+                    document.getElementById('player-live-rank').innerText = "RANK #1";
+
+                    let finalOutcomeMessage = "";
+
+                    if (val === "SAVE") {
+                        printChat("SYS", "<span class='text-[#CC54D0] font-bold'>[SYSTEM]:</span> <span class='text-red-500 font-mono drop-shadow-[0_0_6px_rgba(239,68,68,0.4)]'>⚠️ 警告：機密データが未承認の端末へ送信されました。マスターキーが書き換えられています。</span>");
+                        printChat("A", "フフ…よく決断してくれた。これで私の計画は完成する。未来の支配権は我々のものだ。約束通り、君たちのタイムラインの安全は保証しよう…今はな。");
+                        
+                        feedback.innerHTML = "<span class='text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.6)] font-bold animate-pulse'>⚠️ GAME OVER: タイムライン改変承認。未来は支配されました。</span>";
+                        finalOutcomeMessage = "【MISSION COMPLETE】データ譲渡が完了しました。時空の歪みは固定され、新秩序のタイムラインが構築されました。プロトタイプ検証へのご協力ありがとうございました。";
+                        
+                        unlockStageInGrid(6, "FUTURE OWNED");
+                    } else {
+                        printChat("SYS", "<span class='text-[#4A42AE] font-bold'>[SYSTEM]:</span> <span class='text-[#10b981] font-mono drop-shadow-[0_0_6px_rgba(16,185,129,0.4)]'>🌱 コアデータ消去シークエンス完了。過剰エネルギーを環境再生パルスに変換します。</span>");
+                        printChat("A", "そうか…データを消し去り、未来を自然に還す道を選んだか。タイムラインの歪みは消え、新宿に美しい緑が戻り始めている。君たちが繋いでくれたこの光、絶対に絶やさない。ありがとう。");
+                        
+                        feedback.innerHTML = "<span class='text-[#10b981] drop-shadow-[0_0_8px_rgba(16,185,129,0.6)] font-bold animate-pulse'>🌱 GAME CLEAR: Environment recovery initiated! Future green is protected.</span>";
+                        finalOutcomeMessage = "【MISSION COMPLETE】すべてのステージをクリアしました！ワクチンデータの転送により環境修復が開始され、時空の歪みは無事に正常化されました。プロトタイプ検証へのご協力ありがとうございました。";
+                        
+                        unlockStageInGrid(6, "FUTURE SAVED");
+                    }
+
+                    printChat("SYS", finalOutcomeMessage);
+                    triggerNotificationAlerts();
+                    currentStage = 6;
+
+                    setTimeout(() => {
+                        const finalTitleElem = document.getElementById('ending-title');
+                        const finalStatusElem = document.getElementById('ending-msg');
+                        
+                        if (val === "SAVE") {
+                            if (finalTitleElem) finalTitleElem.innerText = "MISSION FAILED";
+                            if (finalStatusElem) {
+                                finalStatusElem.innerHTML = "<span class='text-red-500 font-bold'>【FUTURE LOST】</span><br>あなたは最悪の選択をしてしまいました。敵対勢力へのデータ譲渡により、未来の新宿は完全に支配されました。人類の再起チャンスは失われ、作戦は失敗に終わりました。";
+                            }
+                        } else {
+                            if (finalTitleElem) finalTitleElem.innerText = "MISSION COMPLETE";
+                            if (finalStatusElem) {
+                                finalStatusElem.innerHTML = "<span class='text-[#10b981] font-bold'>【FUTURE SAVED】</span><br>ワクチンデータの転送により環境修復が開始され、時空の歪みは無事に正常化されました！未来の緑は守られました。プロトタイプ検証へのご協力ありがとうございました。";
+                            }
+                        }
+                        
+                        showScene('ending');
+                    }, 3000);
+
+                }, 1000);
+            }
+            else {
+                feedback.innerText = "✕ CODE ERROR: 適合データが見つかりません。";
+            }
+        }
+
+        function showScene(sceneName) {
+            const chatScene = document.getElementById('scene-chat');
+            const endScene = document.getElementById('scene-ending');
+
+            if (sceneName === 'chat') {
+                chatScene.classList.remove('hidden');
+                chatScene.style.display = 'flex';
+                endScene.classList.add('hidden');
+                endScene.style.display = 'none';
+            } else {
+                chatScene.classList.add('hidden');
+                chatScene.style.display = 'none';
+                endScene.classList.remove('hidden');
+                endScene.style.display = 'flex';
+            }
+        }
+    </script>
+</body>
+</html>
